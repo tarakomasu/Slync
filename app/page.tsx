@@ -1,65 +1,742 @@
+"use client";
+
 import Image from "next/image";
+import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
+
+type Deck = {
+  id: string;
+  title: string;
+  pageCount: number;
+  pages: Array<{
+    pageNumber: number;
+    imageUrl: string;
+    width?: number;
+    height?: number;
+  }>;
+  audioUrl?: string;
+  durationMs?: number;
+};
+
+type SubtitleChunk = {
+  id: string;
+  text: string;
+  startMs?: number;
+  endMs?: number;
+};
+
+type SubtitleGroup = {
+  pageNumber: number;
+  shortTitle: string;
+  chunks: SubtitleChunk[];
+};
+
+type PlayerState = {
+  activePage: number;
+  currentTimeMs: number;
+  isPlaying: boolean;
+  playbackRate: number;
+  activeChunkId?: string;
+};
+
+const subtitleGroups: SubtitleGroup[] = [
+  {
+    pageNumber: 1,
+    shortTitle: "Intro & Context",
+    chunks: [
+      {
+        id: "1-1",
+        text: "Here is the overview of today's presentation.",
+        startMs: 0,
+        endMs: 14000,
+      },
+      {
+        id: "1-2",
+        text: "We'll focus on a reading-first UX for slides.",
+        startMs: 14000,
+        endMs: 30000,
+      },
+      {
+        id: "1-3",
+        text: "These slides pair visuals with page-linked subtitles.",
+        startMs: 30000,
+        endMs: 52000,
+      },
+    ],
+  },
+  {
+    pageNumber: 2,
+    shortTitle: "Problem",
+    chunks: [
+      {
+        id: "2-1",
+        text: "Video is efficient, but hard to skim or quote.",
+      },
+      { id: "2-2", text: "Slides alone lack narrative continuity." },
+      { id: "2-3", text: "We need deterministic sync between slides and text." },
+    ],
+  },
+  {
+    pageNumber: 3,
+    shortTitle: "Solution Overview",
+    chunks: [
+      {
+        id: "3-1",
+        text: "Each page owns exactly one subtitle group.",
+      },
+      {
+        id: "3-2",
+        text: "Only the active page is expanded; all others stay compact.",
+      },
+      {
+        id: "3-3",
+        text: "Swiping the slide or tapping a subtitle moves the page.",
+      },
+    ],
+  },
+  {
+    pageNumber: 4,
+    shortTitle: "Analysis",
+    chunks: [
+      {
+        id: "4-1",
+        text: "Mobile-first layout keeps thumb-reachable controls at the bottom.",
+      },
+      {
+        id: "4-2",
+        text: "Matte backdrop focuses attention on the slide card.",
+      },
+    ],
+  },
+  {
+    pageNumber: 5,
+    shortTitle: "Summary",
+    chunks: [
+      {
+        id: "5-1",
+        text: "Subtitle groups maintain short titles and clean dividers.",
+      },
+      {
+        id: "5-2",
+        text: "Active chunks can highlight without relying on audio.",
+      },
+    ],
+  },
+  {
+    pageNumber: 6,
+    shortTitle: "Q&A",
+    chunks: [],
+  },
+];
+
+const slideHeadings: Record<number, string> = {
+  1: "Key Points of the Presentation",
+  2: "Problem",
+  3: "Solution Overview",
+  4: "Analysis",
+  5: "Summary",
+  6: "Q&A",
+};
+
+const deck: Deck = {
+  id: "demo",
+  title: "Key Points of the Presentation",
+  pageCount: 6,
+  pages: Array.from({ length: 6 }, (_, index) => {
+    const pageNumber = index + 1;
+    return {
+      pageNumber,
+      imageUrl: createSlideImage(
+        slideHeadings[pageNumber] ?? `Slide ${pageNumber}`,
+        pageNumber,
+      ),
+      width: 1200,
+      height: 800,
+    };
+  }),
+  audioUrl: undefined,
+  durationMs: undefined,
+};
+
+function createSlideImage(title: string, pageNumber: number) {
+  const palette = ["#2f80ff", "#6ec1e4", "#b5e0f8", "#f2c94c", "#f2994a"];
+  const bars = [140, 190, 230];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" fill="none">
+    <rect width="1200" height="800" rx="32" fill="#ffffff" />
+    <rect x="48" y="48" width="1104" height="704" rx="24" fill="#f7f8fb" />
+    <text x="96" y="140" fill="#111827" font-family="Inter, -apple-system" font-size="48" font-weight="700">${title}</text>
+    <rect x="140" y="200" width="920" height="3" fill="#e5e7eb" />
+    <rect x="260" y="${520 - bars[0]}" width="110" height="${bars[0]}" rx="12" fill="${palette[0]}" />
+    <rect x="460" y="${520 - bars[1]}" width="110" height="${bars[1]}" rx="12" fill="${palette[1]}" />
+    <rect x="660" y="${520 - bars[2]}" width="110" height="${bars[2]}" rx="12" fill="${palette[3]}" />
+    <text x="290" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">A</text>
+    <text x="490" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">B</text>
+    <text x="690" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">C</text>
+    <text x="1010" y="140" fill="#9ca3af" font-family="Inter, -apple-system" font-size="28" font-weight="700">Page ${pageNumber}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function PagePill({
+  value,
+  tone = "muted",
+}: {
+  value: number;
+  tone?: "muted" | "primary";
+}) {
+  const styles =
+    tone === "primary"
+      ? "bg-[#2f80ff] text-white shadow-sm"
+      : "bg-slate-100 text-slate-700";
+  return (
+    <span
+      className={`inline-flex min-w-[30px] items-center justify-center rounded-xl px-2 py-1 text-xs font-semibold ${styles}`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.8"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronUpIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.8"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m18 15-6-6-6 6" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.8"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+function TriangleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M19 12a1 1 0 0 1-.46.84l-10 6.25A1 1 0 0 1 7 18.25V5.75a1 1 0 0 1 1.54-.84l10 6.25a1 1 0 0 1 .46.84Z" />
+    </svg>
+  );
+}
+
+function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M8 5a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1Zm8 0a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
+function SkipBackIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="m11 5 9 7-9 7V5ZM4 5h2v14H4V5Z" />
+    </svg>
+  );
+}
+
+function SkipForwardIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M13 5v14l9-7-9-7ZM4 5h2v14H4V5Z" />
+    </svg>
+  );
+}
+
+function IndexIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M7 6h10M7 12h7M7 18h4" />
+    </svg>
+  );
+}
+
+function SlideViewer({
+  pages,
+  activePage,
+  onChangePage,
+  title,
+}: {
+  pages: Deck["pages"];
+  activePage: number;
+  onChangePage: (page: number) => void;
+  title: string;
+}) {
+  const startX = useRef<number | null>(null);
+
+  const activePageData = useMemo(
+    () => pages.find((page) => page.pageNumber === activePage) ?? pages[0],
+    [activePage, pages],
+  );
+
+  const preloadPages = useMemo(() => {
+    const neighbors = [activePage - 1, activePage + 1];
+    return pages.filter((page) => neighbors.includes(page.pageNumber));
+  }, [activePage, pages]);
+
+  const handleStart = (clientX: number) => {
+    startX.current = clientX;
+  };
+
+  const handleEnd = (clientX: number) => {
+    if (startX.current === null) return;
+    const deltaX = clientX - startX.current;
+    const threshold = 48;
+    if (deltaX > threshold) {
+      onChangePage(Math.max(1, activePage - 1));
+    } else if (deltaX < -threshold) {
+      onChangePage(Math.min(pages.length, activePage + 1));
+    }
+    startX.current = null;
+  };
+
+  return (
+    <div className="relative h-[42vh] min-h-[260px] max-h-[340px] bg-[#343a46] px-5 pb-5 pt-6">
+      <div className="mx-auto flex h-full max-w-md flex-col">
+        <div className="relative flex-1">
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/20 to-white/0 blur-lg" />
+          <div
+            className="relative z-10 h-full rounded-3xl bg-white p-4 shadow-[0_20px_40px_rgba(0,0,0,0.18)]"
+            onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+            onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
+            onMouseDown={(e) => handleStart(e.clientX)}
+            onMouseUp={(e) => handleEnd(e.clientX)}
+          >
+            <div className="mb-3 flex items-start justify-between">
+              <p className="text-sm font-semibold text-slate-900">{title}</p>
+              <span className="text-xs font-semibold text-slate-400">
+                {activePage}/{pages.length}
+              </span>
+            </div>
+            <div className="flex h-[78%] items-center justify-center rounded-2xl bg-[#eef1f7]">
+              {activePageData ? (
+                <Image
+                  src={activePageData.imageUrl}
+                  alt={`Slide ${activePage}`}
+                  width={activePageData.width ?? 1200}
+                  height={activePageData.height ?? 800}
+                  className="h-full w-full object-contain"
+                  priority
+                />
+              ) : null}
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white via-white/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white via-white/70 to-transparent" />
+            <button
+              type="button"
+              className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
+              aria-label="Previous page"
+              onClick={() => onChangePage(Math.max(1, activePage - 1))}
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
+              aria-label="Next page"
+              onClick={() => onChangePage(Math.min(pages.length, activePage + 1))}
+            />
+          </div>
+        </div>
+      </div>
+      {preloadPages.map((page) => (
+        <div className="sr-only" aria-hidden key={page.pageNumber}>
+          <Image
+            src={page.imageUrl}
+            alt=""
+            width={page.width ?? 1200}
+            height={page.height ?? 800}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SubtitleHeader({
+  headerRef,
+}: {
+  headerRef: MutableRefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      ref={headerRef}
+      className="mb-3 flex items-center justify-between px-1"
+    >
+      <h2 className="text-lg font-semibold text-slate-900">Subtitle</h2>
+      <button
+        type="button"
+        className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+      >
+        <IndexIcon className="h-4 w-4 text-slate-500" />
+        <span>Index</span>
+      </button>
+    </div>
+  );
+}
+
+function SubtitleList({
+  groups,
+  activePage,
+  activeChunkId,
+  onSelectPage,
+  onSelectChunk,
+  groupRefs,
+}: {
+  groups: SubtitleGroup[];
+  activePage: number;
+  activeChunkId?: string;
+  onSelectPage: (pageNumber: number) => void;
+  onSelectChunk: (chunkId: string) => void;
+  groupRefs: MutableRefObject<Record<number, HTMLDivElement | null>>;
+}) {
+  const setGroupRef =
+    (pageNumber: number) => (element: HTMLDivElement | null) => {
+      groupRefs.current[pageNumber] = element;
+    };
+
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => {
+        const isActive = group.pageNumber === activePage;
+
+        if (!isActive) {
+          return (
+            <div
+              key={group.pageNumber}
+              ref={setGroupRef(group.pageNumber)}
+              className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)] transition hover:-translate-y-[1px]"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                onClick={() => onSelectPage(group.pageNumber)}
+              >
+                <PagePill value={group.pageNumber} />
+                <div className="flex-1 truncate text-[15px] font-semibold text-slate-900">
+                  {group.shortTitle}
+                </div>
+                <ChevronRightIcon className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={group.pageNumber}
+            ref={setGroupRef(group.pageNumber)}
+            className="rounded-2xl border border-[#d9e7ff] bg-white shadow-[0_14px_36px_rgba(47,128,255,0.18)]"
+          >
+            <div className="flex items-center gap-3 px-4 py-3">
+              <PagePill value={group.pageNumber} tone="primary" />
+              <div className="flex-1 text-[15px] font-semibold text-slate-900">
+                {group.shortTitle}
+              </div>
+              <ChevronUpIcon className="h-5 w-5 text-[#2f80ff]" />
+            </div>
+            <div className="divide-y divide-slate-100">
+              {group.chunks.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-slate-500">
+                  No subtitles available for this page.
+                </div>
+              ) : (
+                group.chunks.map((chunk) => {
+                  const isActiveChunk = chunk.id === activeChunkId;
+                  return (
+                    <button
+                      key={chunk.id}
+                      type="button"
+                      onClick={() => onSelectChunk(chunk.id)}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition ${
+                        isActiveChunk
+                          ? "bg-[#eaf2ff] ring-1 ring-[#bcd5ff]"
+                          : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`mt-1 h-10 w-1 rounded-full ${
+                          isActiveChunk ? "bg-[#2f80ff]" : "bg-transparent"
+                        }`}
+                      />
+                      <PagePill
+                        value={group.pageNumber}
+                        tone={isActiveChunk ? "primary" : "muted"}
+                      />
+                      <p
+                        className={`flex-1 text-[14px] leading-6 ${
+                          isActiveChunk
+                            ? "font-semibold text-slate-900"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {chunk.text}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BottomControls({
+  state,
+  hasAudio,
+  durationMs,
+  onSeek,
+  onPlayPause,
+  onPrevPage,
+  onNextPage,
+  onChangeRate,
+}: {
+  state: PlayerState;
+  hasAudio: boolean;
+  durationMs?: number;
+  onSeek: (value: number) => void;
+  onPlayPause: () => void;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  onChangeRate: () => void;
+}) {
+  const disabledSeek = !hasAudio || !durationMs;
+  const sliderValue = disabledSeek
+    ? 0
+    : Math.min(durationMs ?? 0, state.currentTimeMs);
+  const displayRate =
+    Number.isInteger(state.playbackRate) && state.playbackRate % 1 === 0
+      ? `${state.playbackRate.toFixed(1)}x`
+      : `${state.playbackRate}x`;
+
+  return (
+    <div className="sticky bottom-0 left-0 right-0 border-t border-slate-200 bg-white px-5 pb-5 pt-3">
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={0}
+          max={durationMs ?? 0}
+          step={500}
+          value={sliderValue}
+          disabled={disabledSeek}
+          onChange={(event) => onSeek(Number(event.target.value))}
+          className={`flex-1 ${disabledSeek ? "opacity-50" : ""}`}
+        />
+        <button
+          type="button"
+          onClick={onChangeRate}
+          className="text-xs font-semibold text-slate-600"
+        >
+          {displayRate}
+        </button>
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onPrevPage}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-inner transition hover:bg-slate-200"
+        >
+          <SkipBackIcon className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onPlayPause}
+          disabled={!hasAudio}
+          className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-[0_16px_30px_rgba(47,128,255,0.3)] transition ${
+            hasAudio
+              ? "bg-[#2f80ff] hover:bg-[#2467d6]"
+              : "bg-slate-300 text-slate-600"
+          }`}
+          aria-label={state.isPlaying ? "Pause" : "Play"}
+        >
+          {state.isPlaying ? (
+            <PauseIcon className="h-7 w-7" />
+          ) : (
+            <TriangleIcon className="h-7 w-7 translate-x-[1px]" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onNextPage}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-inner transition hover:bg-slate-200"
+        >
+          <SkipForwardIcon className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
+  const [state, setState] = useState<PlayerState>({
+    activePage: 1,
+    currentTimeMs: 0,
+    isPlaying: false,
+    playbackRate: 1,
+  });
+
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const groupRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const container = listRef.current;
+    const activeGroup = groupRefs.current[state.activePage];
+    if (!container || !activeGroup) return;
+    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const top = activeGroup.offsetTop - headerHeight - 10;
+    container.scrollTo({
+      top: top >= 0 ? top : 0,
+      behavior: "smooth",
+    });
+  }, [state.activePage]);
+
+  const hasAudio = Boolean(deck.audioUrl);
+
+  const handlePageChange = (pageNumber: number) => {
+    if (pageNumber < 1 || pageNumber > deck.pageCount) return;
+    setState((prev) => ({
+      ...prev,
+      activePage: pageNumber,
+      activeChunkId: undefined,
+    }));
+  };
+
+  const handleChunkSelect = (chunkId: string) => {
+    setState((prev) => ({
+      ...prev,
+      activeChunkId: chunkId,
+    }));
+  };
+
+  const handlePlayToggle = () => {
+    if (!hasAudio) return;
+    setState((prev) => ({
+      ...prev,
+      isPlaying: !prev.isPlaying,
+    }));
+  };
+
+  const handleSeek = (value: number) => {
+    setState((prev) => ({
+      ...prev,
+      currentTimeMs: value,
+    }));
+  };
+
+  const handleChangeRate = () => {
+    const cycle = [1, 1.25, 1.5, 2];
+    const currentIndex = cycle.indexOf(state.playbackRate);
+    const nextRate = cycle[(currentIndex + 1) % cycle.length];
+    setState((prev) => ({ ...prev, playbackRate: nextRate }));
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="flex min-h-screen items-center justify-center bg-[#e5ebf5] px-4 py-6">
+      <div className="w-full max-w-md rounded-[30px] border border-slate-200/70 bg-white shadow-[0_24px_60px_rgba(31,41,55,0.18)]">
+        <div className="flex h-[88vh] min-h-[780px] max-h-[980px] flex-col overflow-hidden rounded-[30px]">
+          <SlideViewer
+            title={deck.title}
+            pages={deck.pages}
+            activePage={state.activePage}
+            onChangePage={handlePageChange}
+          />
+          <div
+            ref={listRef}
+            className="flex-1 overflow-y-auto bg-white px-5 pb-28 pt-4"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <SubtitleHeader headerRef={headerRef} />
+            <SubtitleList
+              groups={subtitleGroups}
+              activePage={state.activePage}
+              activeChunkId={state.activeChunkId}
+              onSelectPage={handlePageChange}
+              onSelectChunk={handleChunkSelect}
+              groupRefs={groupRefs}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <BottomControls
+            state={state}
+            hasAudio={hasAudio}
+            durationMs={deck.durationMs}
+            onSeek={handleSeek}
+            onPlayPause={handlePlayToggle}
+            onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
+            onNextPage={() =>
+              handlePageChange(Math.min(deck.pageCount, state.activePage + 1))
+            }
+            onChangeRate={handleChangeRate}
+          />
         </div>
-      </main>
+      </div>
     </div>
   );
 }
