@@ -339,6 +339,8 @@ Behavior:
 12.2 Implementation approach
 	•	Use refs for each group container.
 	•	On activePage change, call scrollIntoView({ block: 'start', behavior: 'smooth' }) on the expanded card container, then adjust with scrollTop -= headerHeight if needed.
+	•	PDF rendering should load pdfjs client-side to avoid server evaluation of DOMMatrix.
+	•	When calling pdfjs render, include the canvas element in the render parameters.
 
 ⸻
 
@@ -368,6 +370,7 @@ Visual
 	•	No slide progress bar under slide.
 	•	No 3-dot menu in slide area.
 	•	All UI strings in English.
+	•	Web Google Translate is disabled by default.
 	•	Subtitle list shows one row per page when collapsed.
 	•	Active page group expands into card with multiple chunk lines.
 	•	Index button is visible on the right of the Subtitle header (button only).
@@ -427,3 +430,7 @@ These are not blockers; defaults below are recommended.
     }
   ]
 }
+
+17.1 Demo asset note
+	•	The current demo deck uses /public/demo.pdf with 9 pages.
+	•	The demo subtitleGroups are generated to match those 9 pages.

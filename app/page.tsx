@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 
 type Deck = {
@@ -41,140 +40,98 @@ type PlayerState = {
 const subtitleGroups: SubtitleGroup[] = [
   {
     pageNumber: 1,
-    shortTitle: "Intro & Context",
+    shortTitle: "Intro & Agenda",
     chunks: [
-      {
-        id: "1-1",
-        text: "Here is the overview of today's presentation.",
-        startMs: 0,
-        endMs: 14000,
-      },
-      {
-        id: "1-2",
-        text: "We'll focus on a reading-first UX for slides.",
-        startMs: 14000,
-        endMs: 30000,
-      },
-      {
-        id: "1-3",
-        text: "These slides pair visuals with page-linked subtitles.",
-        startMs: 30000,
-        endMs: 52000,
-      },
+      { id: "1-1", text: "Welcome to the demo deck overview." },
+      { id: "1-2", text: "We will walk through the player experience." },
     ],
   },
   {
     pageNumber: 2,
-    shortTitle: "Problem",
+    shortTitle: "Context",
     chunks: [
-      {
-        id: "2-1",
-        text: "Video is efficient, but hard to skim or quote.",
-      },
-      { id: "2-2", text: "Slides alone lack narrative continuity." },
-      { id: "2-3", text: "We need deterministic sync between slides and text." },
+      { id: "2-1", text: "This deck ships as a nine-page PDF." },
+      { id: "2-2", text: "Subtitles are grouped per page for clarity." },
     ],
   },
   {
     pageNumber: 3,
-    shortTitle: "Solution Overview",
+    shortTitle: "Problem",
     chunks: [
-      {
-        id: "3-1",
-        text: "Each page owns exactly one subtitle group.",
-      },
-      {
-        id: "3-2",
-        text: "Only the active page is expanded; all others stay compact.",
-      },
-      {
-        id: "3-3",
-        text: "Swiping the slide or tapping a subtitle moves the page.",
-      },
+      { id: "3-1", text: "Video can be hard to skim or reference quickly." },
+      { id: "3-2", text: "Slides alone miss narrative continuity." },
     ],
   },
   {
     pageNumber: 4,
-    shortTitle: "Analysis",
+    shortTitle: "Insight",
     chunks: [
-      {
-        id: "4-1",
-        text: "Mobile-first layout keeps thumb-reachable controls at the bottom.",
-      },
-      {
-        id: "4-2",
-        text: "Matte backdrop focuses attention on the slide card.",
-      },
+      { id: "4-1", text: "Reading-first layouts keep the story accessible." },
+      { id: "4-2", text: "Sync must be deterministic between pages and text." },
     ],
   },
   {
     pageNumber: 5,
-    shortTitle: "Summary",
+    shortTitle: "Solution",
     chunks: [
-      {
-        id: "5-1",
-        text: "Subtitle groups maintain short titles and clean dividers.",
-      },
-      {
-        id: "5-2",
-        text: "Active chunks can highlight without relying on audio.",
-      },
+      { id: "5-1", text: "Each page owns one subtitle disclosure." },
+      { id: "5-2", text: "Only the active page stays expanded." },
     ],
   },
   {
     pageNumber: 6,
+    shortTitle: "Flow",
+    chunks: [
+      { id: "6-1", text: "Swiping the slide updates the subtitle list." },
+      { id: "6-2", text: "Tapping a collapsed row jumps to that page." },
+    ],
+  },
+  {
+    pageNumber: 7,
+    shortTitle: "Details",
+    chunks: [
+      { id: "7-1", text: "Active chunks highlight with subtle blue." },
+      { id: "7-2", text: "Controls stay thumb-friendly at the bottom." },
+    ],
+  },
+  {
+    pageNumber: 8,
+    shortTitle: "Next Steps",
+    chunks: [
+      { id: "8-1", text: "Audio can be added later without changing UX." },
+      { id: "8-2", text: "Index panel is reserved for future scope." },
+    ],
+  },
+  {
+    pageNumber: 9,
     shortTitle: "Q&A",
-    chunks: [],
+    chunks: [
+      { id: "9-1", text: "Thanks for reviewing the demo deck." },
+      { id: "9-2", text: "Questions and feedback are welcome." },
+    ],
   },
 ];
 
-const slideHeadings: Record<number, string> = {
-  1: "Key Points of the Presentation",
-  2: "Problem",
-  3: "Solution Overview",
-  4: "Analysis",
-  5: "Summary",
-  6: "Q&A",
-};
+const SLIDE_FALLBACK_WIDTH = 1200;
+const SLIDE_FALLBACK_HEIGHT = 800;
+const PDF_SCALE = 1.4;
 
 const deck: Deck = {
   id: "demo",
-  title: "Key Points of the Presentation",
-  pageCount: 6,
-  pages: Array.from({ length: 6 }, (_, index) => {
+  title: "Demo PDF Deck",
+  pageCount: 9,
+  pages: Array.from({ length: 9 }, (_, index) => {
     const pageNumber = index + 1;
     return {
       pageNumber,
-      imageUrl: createSlideImage(
-        slideHeadings[pageNumber] ?? `Slide ${pageNumber}`,
-        pageNumber,
-      ),
-      width: 1200,
-      height: 800,
+      imageUrl: "",
+      width: SLIDE_FALLBACK_WIDTH,
+      height: SLIDE_FALLBACK_HEIGHT,
     };
   }),
   audioUrl: undefined,
   durationMs: undefined,
 };
-
-function createSlideImage(title: string, pageNumber: number) {
-  const palette = ["#2f80ff", "#6ec1e4", "#b5e0f8", "#f2c94c", "#f2994a"];
-  const bars = [140, 190, 230];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" fill="none">
-    <rect width="1200" height="800" rx="32" fill="#ffffff" />
-    <rect x="48" y="48" width="1104" height="704" rx="24" fill="#f7f8fb" />
-    <text x="96" y="140" fill="#111827" font-family="Inter, -apple-system" font-size="48" font-weight="700">${title}</text>
-    <rect x="140" y="200" width="920" height="3" fill="#e5e7eb" />
-    <rect x="260" y="${520 - bars[0]}" width="110" height="${bars[0]}" rx="12" fill="${palette[0]}" />
-    <rect x="460" y="${520 - bars[1]}" width="110" height="${bars[1]}" rx="12" fill="${palette[1]}" />
-    <rect x="660" y="${520 - bars[2]}" width="110" height="${bars[2]}" rx="12" fill="${palette[3]}" />
-    <text x="290" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">A</text>
-    <text x="490" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">B</text>
-    <text x="690" y="560" fill="#4b5563" font-family="Inter, -apple-system" font-size="28" font-weight="600">C</text>
-    <text x="1010" y="140" fill="#9ca3af" font-family="Inter, -apple-system" font-size="28" font-weight="700">Page ${pageNumber}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
 
 function PagePill({
   value,
@@ -322,11 +279,13 @@ function SlideViewer({
   activePage,
   onChangePage,
   title,
+  pageCount,
 }: {
   pages: Deck["pages"];
   activePage: number;
   onChangePage: (page: number) => void;
   title: string;
+  pageCount: number;
 }) {
   const startX = useRef<number | null>(null);
 
@@ -371,20 +330,21 @@ function SlideViewer({
             <div className="mb-3 flex items-start justify-between">
               <p className="text-sm font-semibold text-slate-900">{title}</p>
               <span className="text-xs font-semibold text-slate-400">
-                {activePage}/{pages.length}
+                {activePage}/{pageCount}
               </span>
             </div>
-            <div className="flex h-[78%] items-center justify-center rounded-2xl bg-[#eef1f7]">
-              {activePageData ? (
-                <Image
+            <div className="flex h-[78%] items-center justify-center overflow-hidden rounded-2xl bg-[#eef1f7]">
+              {activePageData?.imageUrl ? (
+                <img
                   src={activePageData.imageUrl}
                   alt={`Slide ${activePage}`}
-                  width={activePageData.width ?? 1200}
-                  height={activePageData.height ?? 800}
+                  width={activePageData.width ?? SLIDE_FALLBACK_WIDTH}
+                  height={activePageData.height ?? SLIDE_FALLBACK_HEIGHT}
                   className="h-full w-full object-contain"
-                  priority
                 />
-              ) : null}
+              ) : (
+                <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200" />
+              )}
             </div>
             <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white via-white/70 to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white via-white/70 to-transparent" />
@@ -398,21 +358,23 @@ function SlideViewer({
               type="button"
               className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
               aria-label="Next page"
-              onClick={() => onChangePage(Math.min(pages.length, activePage + 1))}
+              onClick={() => onChangePage(Math.min(pageCount, activePage + 1))}
             />
           </div>
         </div>
       </div>
-      {preloadPages.map((page) => (
-        <div className="sr-only" aria-hidden key={page.pageNumber}>
-          <Image
-            src={page.imageUrl}
-            alt=""
-            width={page.width ?? 1200}
-            height={page.height ?? 800}
-          />
-        </div>
-      ))}
+      {preloadPages
+        .filter((page) => page.imageUrl)
+        .map((page) => (
+          <div className="sr-only" aria-hidden key={page.pageNumber}>
+            <img
+              src={page.imageUrl}
+              alt=""
+              width={page.width ?? SLIDE_FALLBACK_WIDTH}
+              height={page.height ?? SLIDE_FALLBACK_HEIGHT}
+            />
+          </div>
+        ))}
     </div>
   );
 }
@@ -642,10 +604,83 @@ export default function Home() {
     isPlaying: false,
     playbackRate: 1,
   });
+  const [pages, setPages] = useState<Deck["pages"]>(deck.pages);
+  const [pageCount, setPageCount] = useState(deck.pageCount);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const groupRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const renderPdf = async () => {
+      try {
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url,
+        ).toString();
+        const loadingTask = pdfjsLib.getDocument("/demo.pdf");
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+
+        const totalPages = pdf.numPages;
+        setPageCount(totalPages);
+
+        const renderedPages = await Promise.all(
+          Array.from({ length: totalPages }, (_, index) =>
+            pdf.getPage(index + 1).then(async (page) => {
+              const viewport = page.getViewport({ scale: PDF_SCALE });
+              const canvas = document.createElement("canvas");
+              const context = canvas.getContext("2d");
+              if (!context) return null;
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({
+                canvasContext: context,
+                viewport,
+                canvas,
+              }).promise;
+              return {
+                pageNumber: index + 1,
+                imageUrl: canvas.toDataURL("image/png"),
+                width: viewport.width,
+                height: viewport.height,
+              };
+            }),
+          ),
+        );
+
+        if (cancelled) return;
+
+        const filledPages = Array.from({ length: totalPages }, (_, index) => {
+          const pageNumber = index + 1;
+          const rendered = renderedPages.find(
+            (page) => page?.pageNumber === pageNumber,
+          );
+          return (
+            rendered ?? {
+              pageNumber,
+              imageUrl: "",
+              width: SLIDE_FALLBACK_WIDTH,
+              height: SLIDE_FALLBACK_HEIGHT,
+            }
+          );
+        });
+
+        setPages(filledPages);
+      } catch (error) {
+        console.error("Failed to render PDF slides", error);
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const container = listRef.current;
@@ -662,7 +697,7 @@ export default function Home() {
   const hasAudio = Boolean(deck.audioUrl);
 
   const handlePageChange = (pageNumber: number) => {
-    if (pageNumber < 1 || pageNumber > deck.pageCount) return;
+    if (pageNumber < 1 || pageNumber > pageCount) return;
     setState((prev) => ({
       ...prev,
       activePage: pageNumber,
@@ -705,7 +740,8 @@ export default function Home() {
         <div className="flex h-[88vh] min-h-[780px] max-h-[980px] flex-col overflow-hidden rounded-[30px]">
           <SlideViewer
             title={deck.title}
-            pages={deck.pages}
+            pages={pages}
+            pageCount={pageCount}
             activePage={state.activePage}
             onChangePage={handlePageChange}
           />
@@ -731,7 +767,7 @@ export default function Home() {
             onPlayPause={handlePlayToggle}
             onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
             onNextPage={() =>
-              handlePageChange(Math.min(deck.pageCount, state.activePage + 1))
+              handlePageChange(Math.min(pageCount, state.activePage + 1))
             }
             onChangeRate={handleChangeRate}
           />
