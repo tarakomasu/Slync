@@ -120,8 +120,8 @@ export type SubtitleGroup = {
 5.1 Layout (three regions)
 	1.	Slide Viewer (fixed)
 
-	•	Dark gray matte background “stage”.
-	•	Centered slide card (white, rounded corners).
+	•	Slide image sits directly on a white background (no matte stage).
+	•	Slide viewer uses full device width; slide image fills the available width.
 	•	No slide progress bar under the slide.
 	•	No ellipsis / 3-dot menu in the slide area.
 
@@ -136,6 +136,7 @@ export type SubtitleGroup = {
 
 	•	Row 1: seek bar + speed label (e.g., 1.0x)
 	•	Row 2: transport controls with a large central Play button
+	•	Player fills the device viewport; no outer demo card frame.
 
 5.2 Spacing & sizing (guidelines)
 	•	Slide viewer height: ~38–45% of viewport on iPhone (keep subtitles visible).

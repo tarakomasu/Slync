@@ -316,53 +316,38 @@ function SlideViewer({
   };
 
   return (
-    <div className="relative h-[42vh] min-h-[260px] max-h-[340px] bg-[#343a46] px-5 pb-5 pt-6">
-      <div className="mx-auto flex h-full max-w-md flex-col">
-        <div className="relative flex-1">
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/20 to-white/0 blur-lg" />
-          <div
-            className="relative z-10 h-full rounded-3xl bg-white p-4 shadow-[0_20px_40px_rgba(0,0,0,0.18)]"
-            onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-            onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
-            onMouseDown={(e) => handleStart(e.clientX)}
-            onMouseUp={(e) => handleEnd(e.clientX)}
-          >
-            <div className="mb-3 flex items-start justify-between">
-              <p className="text-sm font-semibold text-slate-900">{title}</p>
-              <span className="text-xs font-semibold text-slate-400">
-                {activePage}/{pageCount}
-              </span>
-            </div>
-            <div className="flex h-[78%] items-center justify-center overflow-hidden rounded-2xl bg-[#eef1f7]">
-              {activePageData?.imageUrl ? (
-                <img
-                  src={activePageData.imageUrl}
-                  alt={`Slide ${activePage}`}
-                  width={activePageData.width ?? SLIDE_FALLBACK_WIDTH}
-                  height={activePageData.height ?? SLIDE_FALLBACK_HEIGHT}
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200" />
-              )}
-            </div>
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white via-white/70 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white via-white/70 to-transparent" />
-            <button
-              type="button"
-              className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
-              aria-label="Previous page"
-              onClick={() => onChangePage(Math.max(1, activePage - 1))}
-            />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
-              aria-label="Next page"
-              onClick={() => onChangePage(Math.min(pageCount, activePage + 1))}
-            />
-          </div>
-        </div>
+    <div
+      className="relative h-[42vh] w-full min-h-[260px]"
+      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+      onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onMouseUp={(e) => handleEnd(e.clientX)}
+    >
+      <div className="flex h-full w-full items-center justify-center overflow-hidden bg-[#eef1f7]">
+        {activePageData?.imageUrl ? (
+          <img
+            src={activePageData.imageUrl}
+            alt={`Slide ${activePage}`}
+            width={activePageData.width ?? SLIDE_FALLBACK_WIDTH}
+            height={activePageData.height ?? SLIDE_FALLBACK_HEIGHT}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <div className="h-full w-full animate-pulse bg-slate-200" />
+        )}
       </div>
+      <button
+        type="button"
+        className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
+        aria-label="Previous page"
+        onClick={() => onChangePage(Math.max(1, activePage - 1))}
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
+        aria-label="Next page"
+        onClick={() => onChangePage(Math.min(pageCount, activePage + 1))}
+      />
       {preloadPages
         .filter((page) => page.imageUrl)
         .map((page) => (
@@ -735,44 +720,40 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#e5ebf5] px-4 py-6">
-      <div className="w-full max-w-md rounded-[30px] border border-slate-200/70 bg-white shadow-[0_24px_60px_rgba(31,41,55,0.18)]">
-        <div className="flex h-[88vh] min-h-[780px] max-h-[980px] flex-col overflow-hidden rounded-[30px]">
-          <SlideViewer
-            title={deck.title}
-            pages={pages}
-            pageCount={pageCount}
-            activePage={state.activePage}
-            onChangePage={handlePageChange}
-          />
-          <div
-            ref={listRef}
-            className="flex-1 overflow-y-auto bg-white px-5 pb-28 pt-4"
-          >
-            <SubtitleHeader headerRef={headerRef} />
-            <SubtitleList
-              groups={subtitleGroups}
-              activePage={state.activePage}
-              activeChunkId={state.activeChunkId}
-              onSelectPage={handlePageChange}
-              onSelectChunk={handleChunkSelect}
-              groupRefs={groupRefs}
-            />
-          </div>
-          <BottomControls
-            state={state}
-            hasAudio={hasAudio}
-            durationMs={deck.durationMs}
-            onSeek={handleSeek}
-            onPlayPause={handlePlayToggle}
-            onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
-            onNextPage={() =>
-              handlePageChange(Math.min(pageCount, state.activePage + 1))
-            }
-            onChangeRate={handleChangeRate}
-          />
-        </div>
+    <div className="flex min-h-screen w-full flex-col bg-white">
+      <SlideViewer
+        title={deck.title}
+        pages={pages}
+        pageCount={pageCount}
+        activePage={state.activePage}
+        onChangePage={handlePageChange}
+      />
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto bg-white px-5 pb-28 pt-4"
+      >
+        <SubtitleHeader headerRef={headerRef} />
+        <SubtitleList
+          groups={subtitleGroups}
+          activePage={state.activePage}
+          activeChunkId={state.activeChunkId}
+          onSelectPage={handlePageChange}
+          onSelectChunk={handleChunkSelect}
+          groupRefs={groupRefs}
+        />
       </div>
+      <BottomControls
+        state={state}
+        hasAudio={hasAudio}
+        durationMs={deck.durationMs}
+        onSeek={handleSeek}
+        onPlayPause={handlePlayToggle}
+        onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
+        onNextPage={() =>
+          handlePageChange(Math.min(pageCount, state.activePage + 1))
+        }
+        onChangeRate={handleChangeRate}
+      />
     </div>
   );
 }
