@@ -367,6 +367,37 @@ function SlideViewer({
   );
 }
 
+function SlideSeekBar({
+  activePage,
+  pageCount,
+  onChangePage,
+}: {
+  activePage: number;
+  pageCount: number;
+  onChangePage: (page: number) => void;
+}) {
+  const progress =
+    pageCount > 1 ? ((activePage - 1) / (pageCount - 1)) * 100 : 0;
+  return (
+    <div className="flex items-center gap-4 border-b border-slate-200 px-5 py-3">
+      <input
+        type="range"
+        min={1}
+        max={pageCount}
+        step={1}
+        value={activePage}
+        onChange={(event) => onChangePage(Number(event.target.value))}
+        className="page-seek flex-1 appearance-none rounded-full"
+        aria-label="Slide page seek"
+        style={{ "--seek-progress": `${progress}%` } as React.CSSProperties}
+      />
+      <span className="rounded-full bg-[#4b5360] px-3 py-1 text-xs font-semibold text-white">
+        {activePage}/{pageCount}
+      </span>
+    </div>
+  );
+}
+
 function SubtitleHeader({
   headerRef,
 }: {
@@ -729,6 +760,11 @@ export default function Home() {
         pages={pages}
         pageCount={pageCount}
         activePage={state.activePage}
+        onChangePage={handlePageChange}
+      />
+      <SlideSeekBar
+        activePage={state.activePage}
+        pageCount={pageCount}
         onChangePage={handlePageChange}
       />
       <div

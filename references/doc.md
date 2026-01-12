@@ -136,6 +136,9 @@ export type SubtitleGroup = {
 
 	•	Row 1: seek bar + speed label (e.g., 1.0x)
 	•	Row 2: transport controls with a large central Play button
+	•	A page seek bar with a page indicator chip sits directly below the slide viewer.
+	•	The seek bar uses #4B5360 for the filled (left of current page) portion.
+	•	The page indicator chip uses #4B5360 background with white text.
 	•	Player fills the device viewport; no outer demo card frame.
 
 5.2 Spacing & sizing (guidelines)
@@ -272,7 +275,7 @@ Goal: avoid “scroll fights” and rapid toggling.
 	•	Text primary: near-black (#111)
 	•	Text secondary: gray (#666)
 	•	Dividers: very light gray (#EAEAEA)
-	•	Matte behind slide: deep gray (#2F3640 to #3A404A range)
+	•	Dark gray: #4B5360
 	•	Accent blue (state): iOS-like blue (#2F80FF range)
 	•	Active highlight background: very light blue (#EAF2FF range)
 	•	Corner radius:

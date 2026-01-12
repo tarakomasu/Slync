@@ -62,3 +62,23 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 2px 6px rgba(47, 128, 255, 0.35);
   border: 3px solid #f8fbff;
 }
+
+input.page-seek::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    #4b5360 0%,
+    #4b5360 var(--seek-progress, 0%),
+    #e5e7eb var(--seek-progress, 0%),
+    #e5e7eb 100%
+  );
+}
+
+input.page-seek::-moz-range-track {
+  background: linear-gradient(
+    to right,
+    #4b5360 0%,
+    #4b5360 var(--seek-progress, 0%),
+    #e5e7eb var(--seek-progress, 0%),
+    #e5e7eb 100%
+  );
+}
