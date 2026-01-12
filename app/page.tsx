@@ -291,13 +291,15 @@ function SlideViewer({
 
   const activePageData = useMemo(
     () => pages.find((page) => page.pageNumber === activePage) ?? pages[0],
-    [activePage, pages],
+    [activePage, pages]
   );
 
   const preloadPages = useMemo(() => {
     const neighbors = [activePage - 1, activePage + 1];
     return pages.filter((page) => neighbors.includes(page.pageNumber));
   }, [activePage, pages]);
+  const slideWidth = activePageData?.width ?? SLIDE_FALLBACK_WIDTH;
+  const slideHeight = activePageData?.height ?? SLIDE_FALLBACK_HEIGHT;
 
   const handleStart = (clientX: number) => {
     startX.current = clientX;
@@ -317,7 +319,8 @@ function SlideViewer({
 
   return (
     <div
-      className="relative h-[42vh] w-full min-h-[260px]"
+      className="relative w-full min-h-[220px]"
+      style={{ aspectRatio: `${slideWidth} / ${slideHeight}` }}
       onTouchStart={(e) => handleStart(e.touches[0].clientX)}
       onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
       onMouseDown={(e) => handleStart(e.clientX)}
@@ -328,8 +331,8 @@ function SlideViewer({
           <img
             src={activePageData.imageUrl}
             alt={`Slide ${activePage}`}
-            width={activePageData.width ?? SLIDE_FALLBACK_WIDTH}
-            height={activePageData.height ?? SLIDE_FALLBACK_HEIGHT}
+            width={slideWidth}
+            height={slideHeight}
             className="h-full w-full object-contain"
           />
         ) : (
@@ -604,7 +607,7 @@ export default function Home() {
         const pdfjsLib = await import("pdfjs-dist");
         pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
           "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url,
+          import.meta.url
         ).toString();
         const loadingTask = pdfjsLib.getDocument("/demo.pdf");
         const pdf = await loadingTask.promise;
@@ -633,8 +636,8 @@ export default function Home() {
                 width: viewport.width,
                 height: viewport.height,
               };
-            }),
-          ),
+            })
+          )
         );
 
         if (cancelled) return;
@@ -642,7 +645,7 @@ export default function Home() {
         const filledPages = Array.from({ length: totalPages }, (_, index) => {
           const pageNumber = index + 1;
           const rendered = renderedPages.find(
-            (page) => page?.pageNumber === pageNumber,
+            (page) => page?.pageNumber === pageNumber
           );
           return (
             rendered ?? {

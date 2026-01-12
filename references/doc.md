@@ -139,7 +139,7 @@ export type SubtitleGroup = {
 	•	Player fills the device viewport; no outer demo card frame.
 
 5.2 Spacing & sizing (guidelines)
-	•	Slide viewer height: ~38–45% of viewport on iPhone (keep subtitles visible).
+	•	Slide viewer height: driven by slide aspect ratio with a 260px minimum height.
 	•	Subtitle header height: 44–52px.
 	•	Collapsed subtitle row height: 52–60px (minimum 44px tap target).
 	•	Expanded card padding: 12–16px.
