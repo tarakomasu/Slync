@@ -319,7 +319,7 @@ function SlideViewer({
 
   return (
     <div
-      className="relative w-full min-h-[220px]"
+      className="relative w-full min-h-[220px] max-h-[45vh]"
       style={{ aspectRatio: `${slideWidth} / ${slideHeight}` }}
       onTouchStart={(e) => handleStart(e.touches[0].clientX)}
       onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
@@ -379,7 +379,7 @@ function SlideSeekBar({
   const progress =
     pageCount > 1 ? ((activePage - 1) / (pageCount - 1)) * 100 : 0;
   return (
-    <div className="flex items-center gap-4 border-b border-slate-200 px-5 py-3">
+    <div className="flex w-full items-center gap-4 border-b border-slate-200 px-0 py-3">
       <input
         type="range"
         min={1}
