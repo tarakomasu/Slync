@@ -5,6 +5,7 @@ import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 type Deck = {
   id: string;
   title: string;
+  authorName: string;
   pageCount: number;
   pages: Array<{
     pageNumber: number;
@@ -119,6 +120,7 @@ const PDF_SCALE = 1.4;
 const deck: Deck = {
   id: "demo",
   title: "Demo PDF Deck",
+  authorName: "Nao Author",
   pageCount: 9,
   pages: Array.from({ length: 9 }, (_, index) => {
     const pageNumber = index + 1;
@@ -274,6 +276,44 @@ function IndexIcon({ className }: { className?: string }) {
   );
 }
 
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3v10" />
+      <path d="m8 9 4 4 4-4" />
+      <path d="M4 17v3h16v-3" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 6l12 12M18 6l-12 12" />
+    </svg>
+  );
+}
+
 function SlideViewer({
   pages,
   activePage,
@@ -400,22 +440,138 @@ function SlideSeekBar({
 
 function SubtitleHeader({
   headerRef,
+  isSyncEnabled,
+  onToggleSync,
+  onDownload,
+  onOpenIndex,
 }: {
   headerRef: MutableRefObject<HTMLDivElement | null>;
+  isSyncEnabled: boolean;
+  onToggleSync: () => void;
+  onDownload: () => void;
+  onOpenIndex: () => void;
 }) {
+  const buttonBase =
+    "flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300";
   return (
     <div
       ref={headerRef}
       className="mb-3 flex items-center justify-between px-1"
     >
       <h2 className="text-lg font-semibold text-slate-900">Subtitle</h2>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleSync}
+          aria-pressed={isSyncEnabled}
+          className={`${buttonBase} ${
+            isSyncEnabled
+              ? "border-[#c7dbff] bg-[#eaf2ff] text-[#2f80ff]"
+              : "text-slate-600"
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`h-2 w-2 rounded-full ${
+              isSyncEnabled ? "bg-[#2f80ff]" : "bg-slate-300"
+            }`}
+          />
+          <span>Sync</span>
+        </button>
+        <button type="button" onClick={onDownload} className={buttonBase}>
+          <DownloadIcon className="h-4 w-4 text-slate-500" />
+          <span>Download</span>
+        </button>
+        <button type="button" onClick={onOpenIndex} className={buttonBase}>
+          <IndexIcon className="h-4 w-4 text-slate-500" />
+          <span>Index</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IndexSheet({
+  groups,
+  activePage,
+  isOpen,
+  onClose,
+  onSelectPage,
+}: {
+  groups: SubtitleGroup[];
+  activePage: number;
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectPage: (pageNumber: number) => void;
+}) {
+  return (
+    <div
+      className={`fixed inset-0 z-30 transition ${
+        isOpen ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
       <button
         type="button"
-        className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+        aria-label="Close index"
+        onClick={onClose}
+        className={`absolute inset-0 bg-slate-900/30 transition-opacity ${
+          isOpen ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <div
+        className={`absolute right-0 top-0 flex h-full w-[78%] max-w-sm flex-col bg-white shadow-2xl transition-transform ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
       >
-        <IndexIcon className="h-4 w-4 text-slate-500" />
-        <span>Index</span>
-      </button>
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Index</p>
+            <p className="text-xs text-slate-500">Jump to a page</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:border-slate-300"
+            aria-label="Close"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="space-y-2">
+            {groups.map((group) => {
+              const isActive = group.pageNumber === activePage;
+              return (
+                <button
+                  key={group.pageNumber}
+                  type="button"
+                  onClick={() => onSelectPage(group.pageNumber)}
+                  className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                    isActive
+                      ? "border-[#c7dbff] bg-[#eaf2ff]"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <PagePill
+                    value={group.pageNumber}
+                    tone={isActive ? "primary" : "muted"}
+                  />
+                  <div className="flex-1">
+                    <p
+                      className={`text-sm font-semibold ${
+                        isActive ? "text-slate-900" : "text-slate-700"
+                      }`}
+                    >
+                      {group.shortTitle}
+                    </p>
+                  </div>
+                  <ChevronRightIcon className="h-4 w-4 text-slate-400" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -559,7 +715,10 @@ function BottomControls({
       : `${state.playbackRate}x`;
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 border-t border-slate-200 bg-white px-5 pb-5 pt-3">
+    <div
+      className="bg-white px-5 pt-3"
+      style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="flex items-center gap-3">
         <input
           type="range"
@@ -616,6 +775,21 @@ function BottomControls({
   );
 }
 
+function DeckInfoFooter({
+  title,
+  authorName,
+}: {
+  title: string;
+  authorName: string;
+}) {
+  return (
+    <div className="border-t border-slate-200 bg-white px-5 py-3">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="text-xs text-slate-500">by {authorName}</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const [state, setState] = useState<PlayerState>({
     activePage: 1,
@@ -623,6 +797,8 @@ export default function Home() {
     isPlaying: false,
     playbackRate: 1,
   });
+  const [isSyncEnabled, setIsSyncEnabled] = useState(true);
+  const [isIndexOpen, setIsIndexOpen] = useState(false);
   const [pages, setPages] = useState<Deck["pages"]>(deck.pages);
   const [pageCount, setPageCount] = useState(deck.pageCount);
 
@@ -705,8 +881,7 @@ export default function Home() {
     const container = listRef.current;
     const activeGroup = groupRefs.current[state.activePage];
     if (!container || !activeGroup) return;
-    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
-    const top = activeGroup.offsetTop - headerHeight - 10;
+    const top = activeGroup.offsetTop - 8;
     container.scrollTo({
       top: top >= 0 ? top : 0,
       behavior: "smooth",
@@ -753,9 +928,18 @@ export default function Home() {
     setState((prev) => ({ ...prev, playbackRate: nextRate }));
   };
 
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = "/demo.pdf";
+    link.download = `${deck.title.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
-      <div className="sticky top-0 z-10 bg-white">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white">
+      <div className="z-10 flex-shrink-0 bg-white">
         <SlideViewer
           title={deck.title}
           pages={pages}
@@ -769,11 +953,19 @@ export default function Home() {
           onChangePage={handlePageChange}
         />
       </div>
+      <div className="z-10 flex-shrink-0 bg-white px-5 pt-4">
+        <SubtitleHeader
+          headerRef={headerRef}
+          isSyncEnabled={isSyncEnabled}
+          onToggleSync={() => setIsSyncEnabled((prev) => !prev)}
+          onDownload={handleDownload}
+          onOpenIndex={() => setIsIndexOpen(true)}
+        />
+      </div>
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto bg-white px-5 pb-28 pt-4"
+        className="min-h-0 flex-1 overflow-y-auto bg-white px-5 pb-[calc(12rem+env(safe-area-inset-bottom))] pt-1"
       >
-        <SubtitleHeader headerRef={headerRef} />
         <SubtitleList
           groups={subtitleGroups}
           activePage={state.activePage}
@@ -783,17 +975,33 @@ export default function Home() {
           groupRefs={groupRefs}
         />
       </div>
-      <BottomControls
-        state={state}
-        hasAudio={hasAudio}
-        durationMs={deck.durationMs}
-        onSeek={handleSeek}
-        onPlayPause={handlePlayToggle}
-        onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
-        onNextPage={() =>
-          handlePageChange(Math.min(pageCount, state.activePage + 1))
-        }
-        onChangeRate={handleChangeRate}
+      <div className="z-20 flex-shrink-0 bg-white">
+        <DeckInfoFooter
+          title={deck.title}
+          authorName={deck.authorName ?? "Unknown author"}
+        />
+        <BottomControls
+          state={state}
+          hasAudio={hasAudio}
+          durationMs={deck.durationMs}
+          onSeek={handleSeek}
+          onPlayPause={handlePlayToggle}
+          onPrevPage={() => handlePageChange(Math.max(1, state.activePage - 1))}
+          onNextPage={() =>
+            handlePageChange(Math.min(pageCount, state.activePage + 1))
+          }
+          onChangeRate={handleChangeRate}
+        />
+      </div>
+      <IndexSheet
+        groups={subtitleGroups}
+        activePage={state.activePage}
+        isOpen={isIndexOpen}
+        onClose={() => setIsIndexOpen(false)}
+        onSelectPage={(pageNumber) => {
+          handlePageChange(pageNumber);
+          setIsIndexOpen(false);
+        }}
       />
     </div>
   );
