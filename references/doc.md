@@ -139,6 +139,7 @@ export type SubtitleGroup = {
 	•	A page seek bar with a page indicator chip sits directly below the slide viewer.
 	•	The seek bar uses #4B5360 for the filled (left of current page) portion.
 	•	The page indicator chip uses #4B5360 background with white text.
+	•	The slide viewer and page seek bar are fixed to the viewport and do not scroll.
 	•	Player fills the device viewport; no outer demo card frame.
 
 5.2 Spacing & sizing (guidelines)

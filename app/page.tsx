@@ -754,19 +754,21 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-white">
-      <SlideViewer
-        title={deck.title}
-        pages={pages}
-        pageCount={pageCount}
-        activePage={state.activePage}
-        onChangePage={handlePageChange}
-      />
-      <SlideSeekBar
-        activePage={state.activePage}
-        pageCount={pageCount}
-        onChangePage={handlePageChange}
-      />
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
+      <div className="sticky top-0 z-10 bg-white">
+        <SlideViewer
+          title={deck.title}
+          pages={pages}
+          pageCount={pageCount}
+          activePage={state.activePage}
+          onChangePage={handlePageChange}
+        />
+        <SlideSeekBar
+          activePage={state.activePage}
+          pageCount={pageCount}
+          onChangePage={handlePageChange}
+        />
+      </div>
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto bg-white px-5 pb-28 pt-4"
